@@ -1,0 +1,16 @@
+# Lokale Terraform-Verzeichnisse, State und gespeicherte Pläne
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tflock
+tfplan
+*.tfplan
+
+# Lokale Zugangsdaten und Einstellungen
+.aws/
+.env
+.env.*
+*.pem
+*.tfvars
+*.tfvars.json
+.DS_Store

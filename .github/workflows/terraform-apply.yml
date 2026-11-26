@@ -1,0 +1,61 @@
+name: Terraform Apply
+
+# Dieser Workflow wird über die GitHub-Oberfläche gestartet.
+on:
+  workflow_dispatch:
+
+# Der Runner braucht Leserechte für den Projektcode.
+permissions:
+  contents: read
+
+# Apply und Destroy verwenden dieselbe Gruppe und laufen nacheinander.
+concurrency:
+  group: terraform-workshop-3
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  AWS_REGION: us-east-1
+  # GitHub stellt die temporären AWS-Zugangsdaten als Secrets bereit.
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+  STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workshop-3
+
+    steps:
+      # Der Runner lädt den eingecheckten Code und installiert Terraform.
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.17.2"
+          terraform_wrapper: false
+
+      # Der Runner verbindet sich mit dem State in S3.
+      - name: Initialize Terraform
+        run: terraform init -input=false -lockfile=readonly -backend-config="bucket=$STATE_BUCKET"
+
+      - name: Validate configuration
+        run: terraform validate
+
+      # Terraform berechnet die Änderungen und führt genau diesen Plan aus.
+      - name: Plan creation
+        run: terraform plan -input=false -lock-timeout=5m -out=tfplan
+
+      - name: Apply
+        run: terraform apply -input=false -lock-timeout=5m tfplan
+
+      # Die URL steht danach im Workflow-Protokoll.
+      - name: Show website address
+        run: terraform output -raw web_url
